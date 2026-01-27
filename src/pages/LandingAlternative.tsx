@@ -133,7 +133,7 @@ export const LandingAlternative = ({ session, userRole, handleSignOut }: Landing
                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-0 group-hover:opacity-100 transition-all" />
 
                         <div className="mb-8 relative z-10 text-center">
-                            <h2 className="text-3xl font-bold text-white mb-2 group-hover:text-blue-100 transition-colors">COMFORT</h2>
+                            <h2 className="text-3xl font-bold text-white mb-2 group-hover:text-blue-100 transition-colors">STANDARD</h2>
                             <p className="text-gray-500 text-sm uppercase tracking-widest group-hover:text-blue-200/70">Reliable & Professional</p>
                         </div>
 
@@ -147,7 +147,7 @@ export const LandingAlternative = ({ session, userRole, handleSignOut }: Landing
                         </div>
 
                         <LegacyButton variant="outline" className="mt-auto border-gray-600 text-gray-300 hover:bg-blue-600 hover:border-blue-600 hover:text-white w-full max-w-xs transition-colors z-10">
-                            Select Comfort
+                            Select Standard
                         </LegacyButton>
                     </motion.div>
 
