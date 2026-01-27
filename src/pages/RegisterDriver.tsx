@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -382,10 +382,8 @@ const RegisterDriver = ({ type }: RegisterDriverProps) => {
     // --- CÁMARA LOGIC ---
     const startCamera = async () => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-            }
+            const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            setStream(mediaStream);
             setIsCameraOpen(true);
             setValidationError(null);
         } catch (err) {
@@ -394,9 +392,30 @@ const RegisterDriver = ({ type }: RegisterDriverProps) => {
         }
     };
 
+    // Use a callback ref to handle the video element mounting
+    const setVideoRef = useCallback((node: HTMLVideoElement | null) => {
+        videoRef.current = node;
+        if (node && stream) {
+            node.srcObject = stream;
+            // Explicitly play to avoid some browser restrictions
+            node.play().catch(err => console.error("Error playing video:", err));
+        }
+    }, [stream]);
+
+    // Cleanup effect
+    useEffect(() => {
+        return () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        };
+    }, [stream]);
+
     const stopCamera = () => {
-        const stream = videoRef.current?.srcObject as MediaStream;
-        stream?.getTracks().forEach(track => track.stop());
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            setStream(null);
+        }
         setIsCameraOpen(false);
     };
 
@@ -724,7 +743,13 @@ const RegisterDriver = ({ type }: RegisterDriverProps) => {
                     <div className="relative mx-auto w-full max-w-sm aspect-square bg-black rounded-xl overflow-hidden shadow-lg border-2 border-border">
                         {/* 1. Live Camera */}
                         {isCameraOpen && !capturedImage && (
-                            <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                            <video
+                                ref={setVideoRef}
+                                autoPlay
+                                playsInline
+                                muted
+                                className="w-full h-full object-cover transform scale-x-[-1]" // Matrix transform for mirror effect
+                            />
                         )}
 
                         {/* 2. Captured Image */}
@@ -854,9 +879,14 @@ const RegisterDriver = ({ type }: RegisterDriverProps) => {
                         )}
 
                         {isCameraOpen && (
-                            <Button onClick={capturePhoto} size="lg" variant="default" className="w-full bg-white text-black hover:bg-gray-200">
-                                <div className="w-4 h-4 rounded-full bg-red-500 mr-2 animate-pulse" /> Take Photo
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button onClick={capturePhoto} size="lg" variant="default" className="flex-1 bg-white text-black hover:bg-gray-200">
+                                    <div className="w-4 h-4 rounded-full bg-red-500 mr-2 animate-pulse" /> Capture
+                                </Button>
+                                <Button onClick={stopCamera} size="lg" variant="destructive" className="flex-1">
+                                    <LogOut className="w-4 h-4 mr-2 rotate-180" /> Cancel
+                                </Button>
+                            </div>
                         )}
 
                         {capturedImage && (

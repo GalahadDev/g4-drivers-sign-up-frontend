@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Crown, Car, Users, Copy, Check, User, Mail, LogOut, Loader2, BadgeCheck } from "lucide-react";
+import { ArrowLeft, Crown, Car, Users, Copy, Check, User, Mail, LogOut, Loader2, BadgeCheck, Settings } from "lucide-react";
 import { ParticlesBackground } from "@/components/ParticlesBackground";
 import { useNavigate } from "react-router-dom";
 import g4Logo from "@/assets/g4-logo.jpg";
@@ -16,6 +16,14 @@ const UserProfile = () => {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    // Check if user is admin
+    authService.checkUserExists().then(({ role }) => {
+      setIsAdmin(role === 'admin');
+    });
+  }, []);
 
   // We'll use infinite query for the dashboard to simulate pagination of the list
   // The 'profile' info will just be taken from the first page
@@ -79,6 +87,15 @@ const UserProfile = () => {
             </button>
             <img src={g4Logo} alt="G4 Car Service" className="h-10" />
             <div className="flex items-center gap-4">
+              {isAdmin && (
+                <button
+                  onClick={() => navigate("/admin")}
+                  className={`flex items-center gap-2 ${isLuxury ? "text-accent hover:text-accent/80" : "text-primary hover:text-primary/80"} transition-colors`}
+                >
+                  <Settings className="w-5 h-5" />
+                  <span className="hidden md:inline">Admin Panel</span>
+                </button>
+              )}
               <button
                 onClick={async () => {
                   try {
