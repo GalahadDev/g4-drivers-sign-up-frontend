@@ -13,9 +13,6 @@ export const authService = {
                 redirectTo: redirectTo || `${window.location.origin}/login`,
                 queryParams: referralCode ? {
                     referred_by: referralCode // Some implementations use queryParams
-                } : undefined,
-                data: referralCode ? {
-                    referred_by: referralCode // Trigger expects this in raw_user_meta_data
                 } : undefined
             },
         });
@@ -53,11 +50,12 @@ export const authService = {
             };
         } catch (error: any) {
             console.error("API Error /user/me:", error);
+            // ONLY treat 404 as "User does not exist" (= needs registration)
+            // Any other error (500, network, timeout) should be THROWN so the UI handles it
             if (error.response?.status === 404) {
-                // User profile might not exist yet if trigger didn't run, or just no application
                 return { exists: false, role: 'driver' };
             }
-            return { exists: false, role: 'driver' };
+            throw error;
         }
     },
 

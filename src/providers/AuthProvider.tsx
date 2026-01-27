@@ -67,7 +67,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, [navigate, location.pathname]);
 
     const signOut = async () => {
-        await supabase.auth.signOut();
+        try {
+            await supabase.auth.signOut();
+        } catch (error) {
+            console.error("Error signing out:", error);
+        } finally {
+            // Force local cleanup regardless of server response
+            setSession(null);
+            localStorage.removeItem("pending_referral");
+            localStorage.removeItem("pendingDriverType");
+            navigate('/login');
+        }
     };
 
     return (
