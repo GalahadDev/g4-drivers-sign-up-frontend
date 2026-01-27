@@ -103,24 +103,35 @@ const AdminDashboard = () => {
               </button>
               <img src={g4Logo} alt="G4 Car Service" className="h-8 md:h-10" />
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={async () => {
-                try {
-                  await authService.signOut();
-                  toast.success("Signed out successfully");
-                  navigate("/");
-                } catch (error) {
-                  console.error(error);
-                  toast.error("Error signing out");
-                }
-              }}
-              className="text-red-500 hover:text-red-700 hover:bg-red-50"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
-            </Button>
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/profile")}
+                className="flex items-center gap-2 text-muted-foreground hover:text-foreground hover:bg-accent/10"
+              >
+                <Users className="w-4 h-4" />
+                <span className="hidden md:inline">My Profile</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    await authService.signOut();
+                    toast.success("Signed out successfully");
+                    navigate("/");
+                  } catch (error) {
+                    console.error(error);
+                    toast.error("Error signing out");
+                  }
+                }}
+                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </header>

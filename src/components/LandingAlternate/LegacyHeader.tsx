@@ -1,6 +1,14 @@
 import { useNavigate } from 'react-router-dom';
-import { User, Settings, LogOut } from "lucide-react";
+import { User, Settings, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface LegacyHeaderProps {
     session: any;
@@ -37,37 +45,70 @@ export const LegacyHeader = ({ session, userRole, handleSignOut }: LegacyHeaderP
                             </Button>
                         ) : (
                             <>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => navigate("/profile")}
-                                    className="flex items-center gap-2 text-gray-300 hover:text-[#D4AF37] hover:bg-white/5"
-                                >
-                                    <User className="w-4 h-4" />
-                                    <span className="hidden md:inline">My Profile</span>
-                                </Button>
-
-                                {userRole === 'admin' && (
+                                {/* Desktop View */}
+                                <div className="hidden md:flex items-center gap-4">
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => navigate("/admin")}
-                                        className="flex items-center gap-2 text-[#D4AF37] hover:text-[#D4AF37]/80 hover:bg-white/5"
+                                        onClick={() => navigate("/profile")}
+                                        className="flex items-center gap-2 text-gray-300 hover:text-[#D4AF37] hover:bg-white/5"
                                     >
-                                        <Settings className="w-4 h-4" />
-                                        <span className="hidden md:inline">Admin</span>
+                                        <User className="w-4 h-4" />
+                                        <span>My Profile</span>
                                     </Button>
-                                )}
 
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={handleSignOut}
-                                    className="flex items-center gap-2 text-red-400 hover:text-red-300 hover:bg-white/5"
-                                >
-                                    <LogOut className="w-4 h-4" />
-                                    <span className="hidden md:inline">Sign Out</span>
-                                </Button>
+                                    {userRole === 'admin' && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => navigate("/admin")}
+                                            className="flex items-center gap-2 text-[#D4AF37] hover:text-[#D4AF37]/80 hover:bg-white/5"
+                                        >
+                                            <Settings className="w-4 h-4" />
+                                            <span>Admin</span>
+                                        </Button>
+                                    )}
+
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={handleSignOut}
+                                        className="flex items-center gap-2 text-red-400 hover:text-red-300 hover:bg-white/5"
+                                    >
+                                        <LogOut className="w-4 h-4" />
+                                        <span>Sign Out</span>
+                                    </Button>
+                                </div>
+
+                                {/* Mobile View (Dropdown) */}
+                                <div className="md:hidden">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+                                                <Menu className="w-6 h-6" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-56 bg-zinc-900 border-zinc-800 text-gray-100">
+                                            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                                            <DropdownMenuSeparator className="bg-white/10" />
+                                            <DropdownMenuItem onClick={() => navigate("/profile")} className="cursor-pointer hover:bg-white/5 focus:bg-white/10">
+                                                <User className="mr-2 h-4 w-4" />
+                                                <span>My Profile</span>
+                                            </DropdownMenuItem>
+                                            {userRole === 'admin' && (
+                                                <DropdownMenuItem onClick={() => navigate("/admin")} className="cursor-pointer text-[#D4AF37] hover:bg-white/5 focus:bg-white/10">
+                                                    <Settings className="mr-2 h-4 w-4" />
+                                                    <span>Admin Panel</span>
+                                                </DropdownMenuItem>
+                                            )}
+                                            <DropdownMenuSeparator className="bg-white/10" />
+                                            <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-red-400 hover:bg-white/5 focus:bg-white/10">
+                                                <LogOut className="mr-2 h-4 w-4" />
+                                                <span>Sign Out</span>
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
                             </>
                         )}
                     </div>
