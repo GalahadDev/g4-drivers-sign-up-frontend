@@ -202,7 +202,7 @@ const Index = () => {
                   <div className="absolute bottom-4 left-4 right-4">
                     <div className="flex items-center gap-2 text-card">
                       <Car className="w-6 h-6" />
-                      <span className="text-xl font-bold">Confort Driver</span>
+                      <span className="text-xl font-bold">Standard Driver</span>
                     </div>
                   </div>
                 </div>
@@ -257,7 +257,7 @@ const Index = () => {
                     attire required. Higher earnings, premium clients.
                   </p>
                   <ul className="space-y-2 mb-6">
-                    {["Premium SUV fleet", "Executive clientele", "40% higher earnings", "Professional training"].map((item, i) => (
+                    {["Premium fleet", "Executive clientele", "Higher earnings", "Professional training"].map((item, i) => (
                       <li key={i} className="flex items-center gap-2 text-card">
                         <CheckCircle className="w-4 h-4 text-accent" />
                         <span className="text-sm">{item}</span>
