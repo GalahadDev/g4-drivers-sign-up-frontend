@@ -52,10 +52,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         });
 
         // 3. Listen to Custom "401" Unauthorized Events from API Interceptor
-        const handleUnauthorized = () => {
+        const handleUnauthorized = async () => {
             console.warn("⚠️ [Auth] Received 401 Unauthorized event. Logging out...");
             toast.error("Session expired. Please log in again.");
-            supabase.auth.signOut(); // This will trigger the SIGNED_OUT event above
+
+            try {
+                await supabase.auth.signOut();
+            } catch (err) {
+                console.error("Error during auto-logout:", err);
+            } finally {
+                // Force local cleanup
+                setSession(null);
+                localStorage.removeItem("pending_referral");
+                localStorage.removeItem("pendingDriverType");
+                navigate('/login');
+            }
         };
 
         window.addEventListener('auth:unauthorized', handleUnauthorized);
