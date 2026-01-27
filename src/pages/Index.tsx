@@ -79,12 +79,15 @@ const Index = () => {
     try {
       await authService.signOut();
       toast.success("Signed out successfully");
-      navigate("/");
-      setSession(null);
-      setUserRole("guest");
     } catch (error) {
       console.error(error);
-      toast.error("Error signing out");
+      // Even if server fails, we sign out locally so user isn't stuck
+    } finally {
+      setSession(null);
+      setUserRole("guest");
+      localStorage.removeItem("pending_referral");
+      localStorage.removeItem("pendingDriverType");
+      navigate("/");
     }
   };
 
