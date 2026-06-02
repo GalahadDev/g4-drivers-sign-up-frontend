@@ -1,64 +1,70 @@
-
 import { supabase } from "@/lib/supabase";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
+export interface ValidateDocumentRequest {
+    docType: 'driverLicense' | 'tlcLicense' | 'carRegistration' | 'vehicleInspection' | 'tlcDiamond' | 'insuranceFiles';
+    file: string;       // base64, may include data URL prefix
+    mimeType: string;
+    expectedName: string;
+    expectedPlate: string;
+}
+
+export interface ValidateDocumentResult {
+    valid: boolean;
+    extractedPlate: string;
+    errorCode: 'WRONG_DOC_TYPE' | 'NAME_MISMATCH' | 'PLATE_MISMATCH' | 'EXPIRED' | 'UNREADABLE' | '';
+    errorMessage: string;
+}
+
 export const visionService = {
-    /**
-     * Sends image to backend for analysis using Google Vision API.
-     * @param base64Image Image in base64 format
-     * @returns Object containing formal wear validation result and detected labels
-     */
     analyzeImage: async (base64Image: string): Promise<{ isFormal: boolean; labels: string[] }> => {
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const token = session?.access_token;
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
 
-            if (!token) {
-                console.warn("No auth token found");
-                // Fallback for dev/testing if needed, or throw
-            }
+        const response = await fetch(`${API_URL}/api/drivers/validate-photo`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ image: base64Image })
+        });
 
-            const response = await fetch(`${API_URL}/api/drivers/validate-photo`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ image: base64Image })
-            });
-
-            if (!response.ok) {
-                if (response.status === 429) {
-                    throw new Error("RATE_LIMIT_EXCEEDED");
-                }
-                if (response.status === 413) {
-                    throw new Error("FILE_TOO_LARGE");
-                }
-                const errorText = await response.text();
-                throw new Error(errorText || "Server error");
-            }
-
-            const data = await response.json();
-            // Expected data: { is_formal: boolean, labels: string[] }
-
-            return {
-                isFormal: data.is_formal,
-                labels: data.labels || []
-            };
-
-        } catch (error) {
-            console.error("Vision API Error:", error);
-            throw error;
+        if (!response.ok) {
+            if (response.status === 429) throw new Error("RATE_LIMIT_EXCEEDED");
+            if (response.status === 413) throw new Error("FILE_TOO_LARGE");
+            const errorText = await response.text();
+            throw new Error(errorText || "Server error");
         }
+
+        const data = await response.json();
+        return { isFormal: data.is_formal, labels: data.labels || [] };
     },
 
-    /**
-     * @deprecated Validation is now performed on the backend. 
-     * This helper is kept compatibility or client-side double-check if needed.
-     */
-    validateFormalWear: (labels: string[]): boolean => {
-        // This is now redundant as analyzeImage returns the definitive boolean
-        return true;
-    }
+    validateDocument: async (req: ValidateDocumentRequest): Promise<ValidateDocumentResult> => {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+
+        const response = await fetch(`${API_URL}/api/drivers/validate-document`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(req),
+        });
+
+        if (!response.ok) {
+            if (response.status === 429) throw new Error('RATE_LIMIT_EXCEEDED');
+            if (response.status === 413) throw new Error('FILE_TOO_LARGE');
+            const text = await response.text();
+            throw new Error(text || 'Server error');
+        }
+
+        return response.json();
+    },
+
+    /** @deprecated Kept for compatibility. Validation is now performed on the backend. */
+    validateFormalWear: (_labels: string[]): boolean => true,
 };
