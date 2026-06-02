@@ -10,6 +10,9 @@ import AdminDashboard from "./pages/AdminDashboard";
 import UserProfile from "./pages/UserProfile";
 import NotFound from "./pages/NotFound";
 import AuthCallback from "./pages/AuthCallback";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
+import DriverAgreement from "./pages/DriverAgreement";
 
 import { AuthProvider } from "@/providers/AuthProvider";
 
@@ -30,6 +33,9 @@ const App = () => (
             <Route path="/register/luxury" element={<RegisterDriver type="luxury" />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/profile" element={<UserProfile />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/driver-agreement" element={<DriverAgreement />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
