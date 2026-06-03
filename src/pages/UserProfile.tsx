@@ -66,7 +66,7 @@ const UserProfile = () => {
   const referralStats = data?.pages[0]?.referral_stats;
   const referralList = data?.pages.flatMap((p) => p.referral_list) ?? [];
 
-  const isLuxury = profile?.status?.toLowerCase().includes("luxury") ?? false;
+  const isLuxury = application?.driver_category?.toLowerCase() === "luxury";
 
   const copyReferralCode = () => {
     if (!profile?.referral_code) return;
