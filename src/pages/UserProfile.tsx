@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Crown, Car, Users, Copy, Check, Loader2, BadgeCheck, Link2, Mail } from "lucide-react";
+import { Crown, Car, Users, Copy, Check, Loader2, BadgeCheck, Link2, Mail, Hash } from "lucide-react";
 import { ParticlesBackground } from "@/components/ParticlesBackground";
 import { LegacyHeader } from "@/components/LandingAlternate/LegacyHeader";
 import { Footer } from "@/components/LandingAlternate/Footer";
@@ -42,6 +42,7 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 const UserProfile = () => {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -77,13 +78,19 @@ const UserProfile = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const copyCodeOnly = () => {
+    if (!profile?.referral_code) return;
+    navigator.clipboard.writeText(profile.referral_code);
+    setCopiedCode(true);
+    toast.success("Code copied!");
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
   const referralLink = profile?.referral_code
     ? `${window.location.origin}/?ref=${profile.referral_code}`
     : "";
 
-  const appStatus = application?.status
-    ? application.status.charAt(0).toUpperCase() + application.status.slice(1)
-    : "Registered";
+  const appStatus = application ? "Submitted" : "—";
 
   if (isLoading) {
     return (
@@ -94,7 +101,7 @@ const UserProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+    <div className="min-h-screen bg-black text-white relative overflow-hidden flex flex-col">
       <ParticlesBackground type="luxury" />
 
       <LegacyHeader
@@ -207,7 +214,7 @@ const UserProfile = () => {
       </section>
 
       {/* Main content */}
-      <main className="relative z-10 max-w-5xl mx-auto px-6 pb-16 space-y-5">
+      <main className="flex-1 relative z-10 max-w-5xl w-full mx-auto px-6 pb-16 space-y-5">
 
         {/* Referral link */}
         <motion.div
@@ -244,6 +251,35 @@ const UserProfile = () => {
               }}
             >
               {referralLink || "Loading..."}
+            </div>
+
+            {/* Divider */}
+            <div className="my-4 h-px w-full bg-[#D4AF37]/10" />
+
+            {/* Code only */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2 min-w-0">
+                <Hash className="w-3.5 h-3.5 shrink-0" style={{ color: GOLD }} strokeWidth={1.5} />
+                <span className="text-xs text-gray-500 shrink-0">Referral code</span>
+                <span
+                  className="ml-2 px-3 py-1 rounded-lg font-mono text-sm font-semibold tracking-widest border select-all truncate"
+                  style={{
+                    background: "rgba(212,175,55,0.06)",
+                    borderColor: "rgba(212,175,55,0.2)",
+                    color: GOLD,
+                  }}
+                >
+                  {profile?.referral_code || "—"}
+                </span>
+              </div>
+              <button
+                onClick={copyCodeOnly}
+                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 hover:bg-white/5"
+                style={{ borderColor: "rgba(212,175,55,0.25)", color: copiedCode ? "#4ade80" : "rgba(212,175,55,0.7)" }}
+              >
+                {copiedCode ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedCode ? "Copied" : "Copy code"}
+              </button>
             </div>
           </Card>
         </motion.div>

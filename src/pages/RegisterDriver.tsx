@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Car, Crown, ArrowLeft, ArrowRight, CheckCircle, Upload, LogOut, Camera, RefreshCw, XCircle, HelpCircle } from "lucide-react";
+import { Car, Crown, ArrowLeft, ArrowRight, CheckCircle, LogOut, HelpCircle, Camera, Upload, RefreshCw, XCircle } from "lucide-react";
+import { DocumentUploadField, type DocQuestionId } from "@/components/DocumentUploadField";
 import { useNavigate } from "react-router-dom";
 import g4Logo from "@/assets/g4-logo.jpg";
 import { supabase } from "@/lib/supabase";
@@ -123,7 +124,6 @@ const DOC_QUESTIONS = [
     'driverLicense', 'tlcLicense', 'carRegistration',
     'vehicleInspection', 'tlcDiamond', 'insuranceFiles',
 ] as const;
-type DocQuestionId = typeof DOC_QUESTIONS[number];
 
 const RegisterDriver = ({ type }: RegisterDriverProps) => {
     const navigate = useNavigate();
@@ -145,9 +145,6 @@ const RegisterDriver = ({ type }: RegisterDriverProps) => {
         }
     }, []);
 
-    // Estado para previsualización de archivos
-    const [previewUrls, setPreviewUrls] = useState<Record<string, string[]>>({});
-
     // --- ESTADOS CÁMARA & VISIÓN ---
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -159,9 +156,7 @@ const RegisterDriver = ({ type }: RegisterDriverProps) => {
     const [stream, setStream] = useState<MediaStream | null>(null);
     const [isReferralLocked, setIsReferralLocked] = useState(false);
 
-    const [docValidations, setDocValidations] = useState<Record<string, 'idle' | 'validating' | 'valid' | 'invalid'>>({});
     const [extractedPlate, setExtractedPlate] = useState<string | null>(null);
-    const [docErrors, setDocErrors] = useState<Record<string, string>>({});
 
     // --- ESTADOS MULTI-CÁMARA (Fotos del vehículo) ---
     const [vehicleCameraPhotos, setVehicleCameraPhotos] = useState<(string | null)[]>([null, null, null, null]);
@@ -377,60 +372,16 @@ const RegisterDriver = ({ type }: RegisterDriverProps) => {
         setFormData({ ...formData, [name]: value });
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        const name = e.target.name;
-
-        if (files && files.length > 0) {
-            // 3. Validation: Max Files (Max 4)
-            if (files.length > 4) {
-                toast.error("Maximum 4 files allowed per field");
-                e.target.value = ""; // Clear input
-                return;
-            }
-
-            const newUrls: string[] = [];
-            Array.from(files).forEach(file => {
-                newUrls.push(URL.createObjectURL(file));
-            });
-
-            setPreviewUrls(prev => ({ ...prev, [name]: newUrls }));
-            setFormData(prev => ({ ...prev, [name]: files }));
-
-            if ((DOC_QUESTIONS as readonly string[]).includes(name)) {
-                handleDocumentUpload(name as DocQuestionId, files[0]);
-            }
-        }
+    const handleDocFilesChange = (questionId: DocQuestionId, files: File[]) => {
+        setFormData((prev: any) => ({ ...prev, [questionId]: files }));
     };
 
-    const handleDocumentUpload = async (questionId: DocQuestionId, file: File) => {
-        setDocValidations(prev => ({ ...prev, [questionId]: 'validating' }));
-        setDocErrors(prev => ({ ...prev, [questionId]: '' }));
-
-        try {
-            const base64 = await fileToBase64(file);
-            const result = await visionService.validateDocument({
-                docType: questionId,
-                file: base64,
-                mimeType: file.type,
-                expectedName: formData.fullName ?? '',
-                expectedPlate: extractedPlate ?? '',
-            });
-
-            if (result.valid) {
-                setDocValidations(prev => ({ ...prev, [questionId]: 'valid' }));
-                if (result.extractedPlate) setExtractedPlate(result.extractedPlate);
-            } else {
-                setDocValidations(prev => ({ ...prev, [questionId]: 'invalid' }));
-                setDocErrors(prev => ({ ...prev, [questionId]: result.errorMessage }));
-            }
-        } catch (err: unknown) {
-            setDocValidations(prev => ({ ...prev, [questionId]: 'invalid' }));
-            const msg = (err instanceof Error && err.message === 'RATE_LIMIT_EXCEEDED')
-                ? 'Too many attempts. Please wait before retrying.'
-                : 'Could not verify document. Please try again.';
-            setDocErrors(prev => ({ ...prev, [questionId]: msg }));
-        }
+    const handleDocClear = (questionId: DocQuestionId) => {
+        setFormData((prev: any) => {
+            const next = { ...prev };
+            delete next[questionId];
+            return next;
+        });
     };
 
     // --- CÁMARA LOGIC ---
@@ -1285,71 +1236,17 @@ const RegisterDriver = ({ type }: RegisterDriverProps) => {
 
             case 'file':
                 inputElement = (
-                    <div className="space-y-4">
-                        <div className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${type === 'luxury'
-                            ? 'border-muted-foreground/30 hover:border-accent'
-                            : 'border-blue-500/25 hover:border-blue-500/55 bg-blue-500/[0.03] hover:bg-blue-500/[0.05]'
-                        }`}>
-                            <Upload className={`w-10 h-10 mx-auto mb-4 ${type === 'luxury' ? 'text-muted' : 'text-blue-400/60'}`} />
-                            <label className="cursor-pointer">
-                                <span className={`text-lg font-medium hover:underline ${type === 'luxury' ? 'text-accent' : 'text-blue-400'}`}>
-                                    Click to upload
-                                </span>
-                                <input
-                                    type="file"
-                                    name={q.id}
-                                    accept={q.accept}
-                                    multiple={q.multiple}
-                                    onChange={handleFileChange}
-                                    className="hidden"
-                                />
-                            </label>
-                            <p className="text-sm text-muted-foreground mt-2">
-                                {q.multiple ? 'Supported files: Images, PDF. Max 10MB per file.' : 'Supported file: Image or PDF. Max 10MB.'}
-                            </p>
-                        </div>
-
-                        {/* Document validation indicator */}
-                        {(DOC_QUESTIONS as readonly string[]).includes(q.id) && docValidations[q.id] && (
-                            <div className="mt-3">
-                                {docValidations[q.id] === 'validating' && (
-                                    <div className="flex items-center gap-2 p-3 rounded-lg text-sm bg-blue-500/10 border border-blue-500/30 text-blue-400">
-                                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                                        <span>Verifying document with AI...</span>
-                                    </div>
-                                )}
-                                {docValidations[q.id] === 'valid' && (
-                                    <div className="flex items-center gap-2 p-3 rounded-lg text-sm bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-                                        <CheckCircle className="w-4 h-4 flex-shrink-0" />
-                                        <span>Document verified</span>
-                                    </div>
-                                )}
-                                {docValidations[q.id] === 'invalid' && (
-                                    <div className="flex items-center gap-2 p-3 rounded-lg text-sm bg-red-500/10 border border-red-500/30 text-red-400">
-                                        <XCircle className="w-4 h-4 flex-shrink-0" />
-                                        <span>{docErrors[q.id]}</span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Previews */}
-                        {previewUrls[q.id] && (
-                            <div className="flex gap-4 flex-wrap mt-4">
-                                {previewUrls[q.id].map((url, idx) => (
-                                    <div key={idx} className="relative w-24 h-24 rounded-lg overflow-hidden border border-border">
-                                        <img src={url} alt="Preview" className="w-full h-full object-cover" />
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                        {formData[q.id] && (
-                            <div className="text-sm text-emerald-400 flex items-center gap-2">
-                                <CheckCircle className="w-4 h-4" />
-                                {formData[q.id].length} file(s) selected
-                            </div>
-                        )}
-                    </div>
+                    <DocumentUploadField
+                        questionId={q.id as DocQuestionId}
+                        accept={q.accept ?? 'image/*,.pdf'}
+                        multiple={q.multiple}
+                        driverType={type}
+                        fullName={formData.fullName ?? ''}
+                        expectedPlate={extractedPlate ?? ''}
+                        onFilesChange={handleDocFilesChange}
+                        onClear={handleDocClear}
+                        onPlateExtracted={(plate) => setExtractedPlate(plate)}
+                    />
                 );
                 break;
 
@@ -1512,17 +1409,6 @@ const RegisterDriver = ({ type }: RegisterDriverProps) => {
                     if (!val || val.length === 0) {
                         toast.error(`Please upload file(s) for: ${q.label.split(' / ')[0]}`);
                         return;
-                    }
-                    if ((DOC_QUESTIONS as readonly string[]).includes(q.id)) {
-                        const state = docValidations[q.id];
-                        if (state === 'validating') {
-                            toast.error(`Still verifying ${q.label.split(' / ')[0]}. Please wait.`);
-                            return;
-                        }
-                        if (state === 'invalid') {
-                            toast.error(`${q.label.split(' / ')[0]} failed verification. Please re-upload.`);
-                            return;
-                        }
                     }
                 } else {
                     if (!val) {

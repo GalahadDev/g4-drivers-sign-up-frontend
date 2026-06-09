@@ -195,7 +195,7 @@ const AdminDashboard = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-10">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 md:py-10">
 
         {/* ── Page heading ───────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 mb-8">
