@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Mail, Instagram } from 'lucide-react';
+import { Mail, Instagram, Phone, Globe } from 'lucide-react';
 
 const LINKS_DRIVERS = [
     { label: 'Apply as Luxury Driver', href: '/login?type=luxury' },
@@ -30,10 +30,10 @@ export const Footer = ({ hideDriverLinks = false }: FooterProps) => {
             <div className="max-w-7xl mx-auto px-6 md:px-8 pt-12 md:pt-16 pb-8">
 
                 {/* Main grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 md:gap-8 mb-12">
+                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-10 md:gap-8 mb-12 ${hideDriverLinks ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
 
                     {/* Brand */}
-                    <div className="sm:col-span-2 lg:col-span-1">
+                    <div className={hideDriverLinks ? '' : 'sm:col-span-2 lg:col-span-1'}>
                         <img
                             src="https://xhcxkvwrjcnioopultzq.supabase.co/storage/v1/object/public/public-resources/logos/G4_GOLD_brand.webp"
                             alt="G4 Car Services"
@@ -52,6 +52,15 @@ export const Footer = ({ hideDriverLinks = false }: FooterProps) => {
                                 className="w-8 h-8 flex items-center justify-center rounded-full border border-white/10 text-gray-500 hover:text-[#D4AF37] hover:border-[#D4AF37]/40 transition-all duration-300"
                             >
                                 <Instagram className="w-3.5 h-3.5" />
+                            </a>
+                            <a
+                                href="https://g4car.services"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label="G4 Car Services website"
+                                className="w-8 h-8 flex items-center justify-center rounded-full border border-white/10 text-gray-500 hover:text-[#D4AF37] hover:border-[#D4AF37]/40 transition-all duration-300"
+                            >
+                                <Globe className="w-3.5 h-3.5" />
                             </a>
                         </div>
                     </div>
@@ -104,20 +113,20 @@ export const Footer = ({ hideDriverLinks = false }: FooterProps) => {
                         <ul className="space-y-3">
                             <li>
                                 <a
-                                    href="mailto:drivers@g4car.services"
+                                    href="mailto:recruitment.g4@gmail.com"
                                     className="flex items-center gap-2 text-gray-500 hover:text-[#D4AF37] text-sm transition-colors duration-200 group"
                                 >
                                     <Mail className="w-3.5 h-3.5 shrink-0 group-hover:text-[#D4AF37] transition-colors" />
-                                    drivers@g4car.services
+                                    recruitment.g4@gmail.com
                                 </a>
                             </li>
                             <li>
                                 <a
-                                    href="mailto:info@g4car.services"
+                                    href="tel:+19176627368"
                                     className="flex items-center gap-2 text-gray-500 hover:text-[#D4AF37] text-sm transition-colors duration-200 group"
                                 >
-                                    <Mail className="w-3.5 h-3.5 shrink-0 group-hover:text-[#D4AF37] transition-colors" />
-                                    info@g4car.services
+                                    <Phone className="w-3.5 h-3.5 shrink-0 group-hover:text-[#D4AF37] transition-colors" />
+                                    +1 (917) 662-7368
                                 </a>
                             </li>
                         </ul>
