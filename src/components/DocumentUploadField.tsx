@@ -219,15 +219,25 @@ export function DocumentUploadField({
       {/* ── Estado vacío: dos CTAs ── */}
       {isEmpty && (
         <>
-          <div className="flex gap-3">
-            <Button type="button" size="lg" className={`flex-1 ${accentBg}`} onClick={startCamera}>
+          <div className="flex flex-col gap-3">
+            <Button type="button" size="lg" className={`w-full ${accentBg}`} onClick={startCamera}>
               <Camera className="mr-2 w-5 h-5" /> Open Camera
             </Button>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className={`px-2 ${isLuxury ? 'bg-foreground text-muted' : 'bg-[#0a1628] text-slate-500'}`}>
+                  Or
+                </span>
+              </div>
+            </div>
             <Button
               type="button"
               variant="outline"
               size="lg"
-              className={`flex-1 ${outlineBtn}`}
+              className={`w-full ${outlineBtn}`}
               onClick={() => fileInputRef.current?.click()}
             >
               <Upload className="mr-2 w-5 h-5" /> Upload File
