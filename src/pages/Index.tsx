@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { authService } from '@/services/auth.service';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import { ASSETS } from '@/lib/assets';
 
 import { LegacyButton } from '@/components/LandingAlternate/LegacyButton';
 import { HeroSlider } from '@/components/LandingAlternate/HeroSlider';
@@ -130,7 +131,7 @@ const Index = () => {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1 }}
-            src="https://xhcxkvwrjcnioopultzq.supabase.co/storage/v1/object/public/public-resources/logos/G4-transparent-logo.png"
+            src={ASSETS.logoTransparent}
             alt="G4 Logo"
             className="w-14 md:w-28 mx-auto mb-5 md:mb-8 drop-shadow-[0_0_25px_rgba(212,175,55,0.6)]"
           />
@@ -208,7 +209,7 @@ const Index = () => {
             <div className="relative w-full h-32 md:h-44 mb-5 md:mb-8 flex items-center justify-center z-10">
               <div className="absolute inset-0 bg-[#D4AF37]/15 blur-[50px] rounded-full opacity-30 group-hover:opacity-60 transition-opacity duration-700" />
               <img
-                src="https://bglvvffnlgawlcfxctbl.supabase.co/storage/v1/object/public/public-resources/cars/escalade-2026-vehicle.png"
+                src={ASSETS.carEscalade}
                 alt="Luxury Escalade 2026"
                 className="max-h-full w-auto mx-auto object-contain drop-shadow-2xl group-hover:scale-105 transition-transform duration-500"
               />
@@ -249,7 +250,7 @@ const Index = () => {
             <div className="relative w-full h-32 md:h-44 mb-5 md:mb-8 flex items-center justify-center z-10">
               <div className="absolute inset-0 bg-blue-500/10 blur-[50px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
               <img
-                src="https://xhcxkvwrjcnioopultzq.supabase.co/storage/v1/object/public/public-resources/cars/corolla.png"
+                src={ASSETS.carCorolla}
                 alt="Standard Sedan"
                 className="max-h-full w-auto mx-auto object-contain opacity-85 group-hover:opacity-100 transition-all duration-500 grayscale group-hover:grayscale-0"
               />

@@ -11,6 +11,10 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { authService } from "@/services/auth.service";
 import { visionService } from "@/services/vision.service";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
+import { ASSETS } from "@/lib/assets";
+import { AxiosError } from "axios";
 import {
     HoverCard,
     HoverCardContent,
@@ -21,6 +25,36 @@ import { ParticlesBackground } from "@/components/ParticlesBackground";
 interface RegisterDriverProps {
     type: "regular" | "luxury";
 }
+
+// Hoisted to module scope so it isn't recreated on every RegisterDriver render
+// (an inline component remounts each render, losing state and causing flicker).
+const RegisterHeader = ({
+    type,
+    onLogout,
+}: {
+    type: "regular" | "luxury";
+    onLogout: () => void;
+}) => (
+    <header className={`py-6 border-b relative z-10 backdrop-blur-sm ${type === "luxury" ? "bg-foreground border-muted-foreground/20" : "bg-[#050d1a]/95 border-blue-500/10"}`}>
+        <div className="container mx-auto px-6">
+            <div className="flex items-center justify-between">
+                <div className="w-20"></div>
+
+                <img src={g4Logo} alt="G4 Car Service" className="h-10 rounded-lg" />
+
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onLogout}
+                    className="flex items-center gap-2 text-red-400 hover:text-red-300 hover:bg-white/10"
+                >
+                    <LogOut className="w-4 h-4" />
+                    <span className="hidden md:inline">Logout</span>
+                </Button>
+            </div>
+        </div>
+    </header>
+);
 
 type WizardStep = 'welcome' | 'form' | 'review' | 'success';
 
@@ -276,7 +310,7 @@ const RegisterDriver = ({ type }: RegisterDriverProps) => {
             useMultiCamera: true,
             cameraLabels: ['Front / Frente', 'Back / Atrás', 'Left Side / Lado Izquierdo', 'Right Side / Lado Derecho'],
             helper: 'Take or upload 4 photos: Front, Back, Left Side, Right Side. Clean vehicle before taking pictures.',
-            sampleImage: type === 'luxury' ? 'https://bglvvffnlgawlcfxctbl.supabase.co/storage/v1/object/public/public-resources/cars/escalade-2026-vehicle.png' : '4-pictures-vehicle.png'
+            sampleImage: type === 'luxury' ? ASSETS.carEscalade : '4-pictures-vehicle.png'
         },
 
         { id: 'additionalInfo', label: 'Additional information / Información adicional', type: 'text', required: false },
@@ -315,7 +349,8 @@ const RegisterDriver = ({ type }: RegisterDriverProps) => {
     const filteredQuestions = questions.filter(q => !q.onlyFor || q.onlyFor === type);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        let { name, value } = e.target;
+        const { name } = e.target;
+        let { value } = e.target;
 
         // 1. Validation: Seat Capacity (Max 6)
         if (name === 'passengerCapacity') {
@@ -749,7 +784,7 @@ const RegisterDriver = ({ type }: RegisterDriverProps) => {
             }
 
             // 6. INFO ADICIONAL (Referral para todos, campos extra solo Luxury)
-            const additionalInfo: any = {
+            const additionalInfo: Record<string, string> = {
                 referralCode: formData.referralCode || "",
             };
 
@@ -770,35 +805,27 @@ const RegisterDriver = ({ type }: RegisterDriverProps) => {
 
             formDataToSend.append("additional_info", JSON.stringify(additionalInfo));
 
-            // 7. ENVÍO
-            const { data: { session } } = await supabase.auth.getSession();
-
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/drivers/register`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${session?.access_token}`,
-                    // NO Content-Type manual
-                },
-                body: formDataToSend
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                // Detectar Rate Limit
-                if (response.status === 429) {
-                    throw new Error("Demasiados intentos. Por favor espera 5 minutos.");
-                }
-                throw new Error(errorText || "Error en el servidor");
-            }
-
-            const result = await response.json();
-            console.log("Success:", result);
+            // 7. ENVÍO (axios: inyecta el token y centraliza el manejo del 401 en lib/api)
+            const { data: result } = await api.post('/drivers/register', formDataToSend);
+            logger.log("Success:", result);
             toast.success("¡Solicitud enviada con éxito!");
             navigate("/profile");
 
-        } catch (error: any) {
-            console.error("Submission error:", error);
-            toast.error(error.message || "Error al enviar la solicitud");
+        } catch (error: unknown) {
+            logger.error("Submission error:", error);
+            let message = "Error al enviar la solicitud";
+            if (error instanceof AxiosError) {
+                if (error.response?.status === 429) {
+                    message = "Demasiados intentos. Por favor espera 5 minutos.";
+                } else if (typeof error.response?.data === "string" && error.response.data) {
+                    message = error.response.data;
+                } else if (error.message) {
+                    message = error.message;
+                }
+            } else if (error instanceof Error && error.message) {
+                message = error.message;
+            }
+            toast.error(message);
         } finally {
             setIsSubmitting(false);
         }
@@ -815,28 +842,6 @@ const RegisterDriver = ({ type }: RegisterDriverProps) => {
     };
 
     const currentQ = filteredQuestions[currentQuestionIndex];
-
-    const Header = () => (
-        <header className={`py-6 border-b relative z-10 backdrop-blur-sm ${type === "luxury" ? "bg-foreground border-muted-foreground/20" : "bg-[#050d1a]/95 border-blue-500/10"}`}>
-            <div className="container mx-auto px-6">
-                <div className="flex items-center justify-between">
-                    <div className="w-20"></div>
-
-                    <img src={g4Logo} alt="G4 Car Service" className="h-10 rounded-lg" />
-
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleLogout}
-                        className={`flex items-center gap-2 ${type === "luxury" ? "text-red-400 hover:text-red-300 hover:bg-white/10" : "text-red-400 hover:text-red-300 hover:bg-white/10"}`}
-                    >
-                        <LogOut className="w-4 h-4" />
-                        <span className="hidden md:inline">Logout</span>
-                    </Button>
-                </div>
-            </div>
-        </header>
-    );
 
     // RENDERIZADO DE INPUTS SEGÚN TIPO
     const renderQuestionInput = (q: Question) => {
@@ -1303,7 +1308,7 @@ const RegisterDriver = ({ type }: RegisterDriverProps) => {
         return (
             <div className={`min-h-screen flex flex-col relative overflow-hidden ${type === "luxury" ? "bg-foreground" : "bg-[#050d1a]"}`}>
                 <ParticlesBackground type={type} />
-                <Header />
+                <RegisterHeader type={type} onLogout={handleLogout} />
                 <div className="flex-1 flex items-center justify-center p-4 relative z-10">
                     <Card className={`max-w-xl w-full p-8 text-center shadow-2xl ${type === "luxury"
                         ? "bg-[#1a1a1a] text-white border-white/10"
@@ -1451,7 +1456,7 @@ const RegisterDriver = ({ type }: RegisterDriverProps) => {
         return (
             <div className={`min-h-screen flex flex-col relative overflow-hidden ${type === "luxury" ? "bg-foreground" : "bg-[#050d1a]"}`}>
                 <ParticlesBackground type={type} />
-                <Header />
+                <RegisterHeader type={type} onLogout={handleLogout} />
                 <div className="flex-1 py-8 px-4 relative z-10">
                     <div className="max-w-2xl mx-auto space-y-6">
                         {/* Progress Bar */}
@@ -1555,7 +1560,7 @@ const RegisterDriver = ({ type }: RegisterDriverProps) => {
         return (
             <div className={`min-h-screen flex flex-col relative overflow-hidden ${type === "luxury" ? "bg-foreground" : "bg-[#050d1a]"}`}>
                 <ParticlesBackground type={type} />
-                <Header />
+                <RegisterHeader type={type} onLogout={handleLogout} />
                 <div className="flex-1 py-12 px-4">
                     <div className="max-w-2xl mx-auto space-y-8">
                         <div className="text-center">

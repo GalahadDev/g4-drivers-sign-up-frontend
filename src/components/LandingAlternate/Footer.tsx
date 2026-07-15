@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Mail, Instagram, Phone, Globe } from 'lucide-react';
+import { ASSETS } from '@/lib/assets';
 
 const LINKS_DRIVERS = [
     { label: 'Apply as Luxury Driver', href: '/login?type=luxury' },
@@ -35,7 +36,7 @@ export const Footer = ({ hideDriverLinks = false }: FooterProps) => {
                     {/* Brand */}
                     <div className={hideDriverLinks ? '' : 'sm:col-span-2 lg:col-span-1'}>
                         <img
-                            src="https://xhcxkvwrjcnioopultzq.supabase.co/storage/v1/object/public/public-resources/logos/G4_GOLD_brand.webp"
+                            src={ASSETS.logoGold}
                             alt="G4 Car Services"
                             className="h-8 w-auto object-contain mb-4"
                         />

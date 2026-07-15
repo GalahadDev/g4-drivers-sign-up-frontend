@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Footer } from '@/components/LandingAlternate/Footer';
 import { motion } from 'framer-motion';
+import { ASSETS } from '@/lib/assets';
 
 interface Section {
     title: string;
@@ -32,7 +33,7 @@ export const LegalLayout = ({ title, subtitle, effectiveDate, sections }: LegalL
                             Back
                         </button>
                         <img
-                            src="https://xhcxkvwrjcnioopultzq.supabase.co/storage/v1/object/public/public-resources/logos/G4_GOLD_brand.webp"
+                            src={ASSETS.logoGold}
                             alt="G4 Car Services"
                             className="h-7 md:h-9 w-auto object-contain cursor-pointer"
                             onClick={() => navigate('/')}

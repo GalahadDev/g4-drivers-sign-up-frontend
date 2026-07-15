@@ -24,6 +24,23 @@ export interface DocumentUploadFieldProps {
 
 type ValidationState = 'idle' | 'validating' | 'valid' | 'invalid';
 
+// Single source of truth per uploaded file. Replaces the 4 parallel arrays
+// (files / previewUrls / validations / validationErrors) that had to be kept
+// in sync by hand — a stable `id` also makes async validation resilient to the
+// file being removed mid-flight.
+interface FileEntry {
+  id: string;
+  file: File;
+  previewUrl: string;
+  validation: ValidationState;
+  error: string;
+}
+
+const makeId = (): string =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
 const fileToBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -53,10 +70,7 @@ export function DocumentUploadField({
   onClear,
   onPlateExtracted,
 }: DocumentUploadFieldProps) {
-  const [files, setFiles] = useState<File[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-  const [validations, setValidations] = useState<ValidationState[]>([]);
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [entries, setEntries] = useState<FileEntry[]>([]);
 
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [capturedPreview, setCapturedPreview] = useState<string | null>(null);
@@ -94,9 +108,13 @@ export function DocumentUploadField({
     ? 'border-accent/30 text-accent hover:bg-accent/5'
     : 'border-blue-500/30 text-blue-400 hover:bg-blue-500/5';
 
-  const validateFile = async (file: File, index: number) => {
-    setValidations(prev => { const n = [...prev]; n[index] = 'validating'; return n; });
-    setValidationErrors(prev => { const n = [...prev]; n[index] = ''; return n; });
+  // Updates a single entry by id — safe even if the entry was removed while its
+  // validation request was in flight (the map simply matches nothing).
+  const patchEntry = (id: string, patch: Partial<FileEntry>) =>
+    setEntries(prev => prev.map(e => (e.id === id ? { ...e, ...patch } : e)));
+
+  const validateFile = async (id: string, file: File) => {
+    patchEntry(id, { validation: 'validating', error: '' });
     try {
       const base64 = await fileToBase64(file);
       const result = await visionService.validateDocument({
@@ -107,70 +125,74 @@ export function DocumentUploadField({
         expectedPlate,
       });
       if (result.valid) {
-        setValidations(prev => { const n = [...prev]; n[index] = 'valid'; return n; });
+        patchEntry(id, { validation: 'valid' });
         if (result.extractedPlate) onPlateExtracted(result.extractedPlate);
       } else {
-        setValidations(prev => { const n = [...prev]; n[index] = 'invalid'; return n; });
-        setValidationErrors(prev => { const n = [...prev]; n[index] = result.errorMessage; return n; });
+        patchEntry(id, { validation: 'invalid', error: result.errorMessage });
       }
     } catch (err: unknown) {
       const msg = (err instanceof Error && err.message === 'RATE_LIMIT_EXCEEDED')
         ? 'Too many attempts. Please wait before retrying.'
         : 'Could not verify document. Please try again.';
-      setValidations(prev => { const n = [...prev]; n[index] = 'invalid'; return n; });
-      setValidationErrors(prev => { const n = [...prev]; n[index] = msg; return n; });
+      patchEntry(id, { validation: 'invalid', error: msg });
     }
   };
 
-  const addFile = (file: File) => {
+  const makeEntry = (file: File): FileEntry => ({
+    id: makeId(),
+    file,
+    previewUrl: URL.createObjectURL(file),
+    validation: 'idle',
+    error: '',
+  });
+
+  // Adds a batch in a single state update (called once per user action) so the
+  // 4-file cap and parent sync stay consistent even when several files arrive
+  // at once from the file picker.
+  const addFiles = (incoming: File[]) => {
     if (!multiple) {
-      // Replace: revoke old preview URL if any, then set single file
-      const url = URL.createObjectURL(file);
-      setPreviewUrls(prev => { prev.forEach(u => URL.revokeObjectURL(u)); return [url]; });
-      setFiles([file]);
-      setValidations(['idle']);
-      setValidationErrors(['']);
+      const file = incoming[0];
+      if (!file) return;
+      entries.forEach(e => URL.revokeObjectURL(e.previewUrl));
+      const entry = makeEntry(file);
+      setEntries([entry]);
       onFilesChange(questionId, [file]);
-      validateFile(file, 0);
+      validateFile(entry.id, file);
       return;
     }
-    if (files.length >= 4) {
+
+    const room = 4 - entries.length;
+    if (room <= 0) {
       toast.error('Maximum 4 files allowed per field');
       return;
     }
-    const url = URL.createObjectURL(file);
-    const newFiles = [...files, file];
-    setFiles(newFiles);
-    setPreviewUrls(prev => [...prev, url]);
-    setValidations(prev => [...prev, 'idle']);
-    setValidationErrors(prev => [...prev, '']);
-    onFilesChange(questionId, newFiles);
-    validateFile(file, newFiles.length - 1);
+    if (incoming.length > room) {
+      toast.error('Maximum 4 files allowed per field');
+    }
+    const added = incoming.slice(0, room).map(makeEntry);
+    if (added.length === 0) return;
+    const next = [...entries, ...added];
+    setEntries(next);
+    onFilesChange(questionId, next.map(e => e.file));
+    added.forEach(e => validateFile(e.id, e.file));
   };
 
-  const removeFile = (index: number) => {
-    URL.revokeObjectURL(previewUrls[index]);
-    const newFiles = files.filter((_, i) => i !== index);
-    setFiles(newFiles);
-    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
-    setValidations(prev => prev.filter((_, i) => i !== index));
-    setValidationErrors(prev => prev.filter((_, i) => i !== index));
-    if (newFiles.length === 0) {
+  const removeFile = (id: string) => {
+    const target = entries.find(e => e.id === id);
+    if (target) URL.revokeObjectURL(target.previewUrl);
+    const next = entries.filter(e => e.id !== id);
+    setEntries(next);
+    if (next.length === 0) {
       onClear(questionId);
     } else {
-      onFilesChange(questionId, newFiles);
+      onFilesChange(questionId, next.map(e => e.file));
     }
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files;
     if (!selected || selected.length === 0) return;
-    if (selected.length > 4) {
-      toast.error('Maximum 4 files allowed per field');
-      e.target.value = '';
-      return;
-    }
-    Array.from(selected).forEach(f => addFile(f));
+    addFiles(Array.from(selected));
     e.target.value = '';
   };
 
@@ -208,11 +230,11 @@ export function DocumentUploadField({
     if (!capturedPreview) return;
     const file = dataURLtoFile(capturedPreview, `${questionId}_${Date.now()}.jpg`);
     setCapturedPreview(null);
-    addFile(file);
+    addFiles([file]);
   };
 
-  const canAddMore = multiple && files.length < 4 && !isCameraOpen && !capturedPreview;
-  const isEmpty = files.length === 0 && !isCameraOpen && !capturedPreview;
+  const canAddMore = multiple && entries.length < 4 && !isCameraOpen && !capturedPreview;
+  const isEmpty = entries.length === 0 && !isCameraOpen && !capturedPreview;
 
   return (
     <div className="space-y-4">
@@ -300,19 +322,19 @@ export function DocumentUploadField({
       )}
 
       {/* ── Thumbnails de archivos subidos ── */}
-      {files.length > 0 && (
+      {entries.length > 0 && (
         <div className="space-y-3">
           <div className="flex flex-wrap gap-3 items-start">
-            {files.map((file, idx) => (
-              <div key={idx} className="relative">
+            {entries.map((entry) => (
+              <div key={entry.id} className="relative">
                 <div className={`w-24 h-24 rounded-lg overflow-hidden border-2 ${
-                  validations[idx] === 'valid'
+                  entry.validation === 'valid'
                     ? 'border-emerald-500'
-                    : validations[idx] === 'invalid'
+                    : entry.validation === 'invalid'
                       ? 'border-red-500/60'
                       : accentBorder
                 }`}>
-                  {file.type === 'application/pdf' ? (
+                  {entry.file.type === 'application/pdf' ? (
                     <div className={`flex flex-col items-center justify-center h-full text-xs gap-1 ${
                       isLuxury ? 'bg-card/10 text-muted' : 'bg-blue-500/10 text-blue-400'
                     }`}>
@@ -320,12 +342,12 @@ export function DocumentUploadField({
                       <span>PDF</span>
                     </div>
                   ) : (
-                    <img src={previewUrls[idx]} alt="Document preview" className="w-full h-full object-cover" />
+                    <img src={entry.previewUrl} alt="Document preview" className="w-full h-full object-cover" />
                   )}
                 </div>
                 <button
                   type="button"
-                  onClick={() => removeFile(idx)}
+                  onClick={() => removeFile(entry.id)}
                   className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500/20 border border-red-500/40 text-red-400 flex items-center justify-center hover:bg-red-500/40 transition-colors"
                   aria-label="Remove file"
                 >
@@ -366,34 +388,34 @@ export function DocumentUploadField({
           </div>
 
           {/* Badges de validación */}
-          {validations.map((v, idx) =>
-            v !== 'idle' ? (
+          {entries.map((entry) =>
+            entry.validation !== 'idle' ? (
               <div
-                key={idx}
+                key={entry.id}
                 className={`flex items-center gap-2 p-3 rounded-lg text-sm ${
-                  v === 'validating'
+                  entry.validation === 'validating'
                     ? 'bg-blue-500/10 border border-blue-500/30 text-blue-400'
-                    : v === 'valid'
+                    : entry.validation === 'valid'
                       ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'
                       : 'bg-red-500/10 border border-red-500/30 text-red-400'
                 }`}
               >
-                {v === 'validating' && (
+                {entry.validation === 'validating' && (
                   <>
                     <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin flex-shrink-0" />
                     <span>Verifying document with AI...</span>
                   </>
                 )}
-                {v === 'valid' && (
+                {entry.validation === 'valid' && (
                   <>
                     <CheckCircle className="w-4 h-4 flex-shrink-0" />
                     <span>Document verified</span>
                   </>
                 )}
-                {v === 'invalid' && (
+                {entry.validation === 'invalid' && (
                   <>
                     <XCircle className="w-4 h-4 flex-shrink-0" />
-                    <span>{validationErrors[idx]}</span>
+                    <span>{entry.error}</span>
                   </>
                 )}
               </div>
