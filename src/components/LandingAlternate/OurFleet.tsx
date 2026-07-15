@@ -1,15 +1,7 @@
 import { motion } from 'framer-motion';
+import { ASSETS } from '@/lib/assets';
 
-const FLEET_IMAGES = [
-    "https://xhcxkvwrjcnioopultzq.supabase.co/storage/v1/object/public/public-resources/our-fleet/WhatsApp%20Image%202026-01-21%20at%2015.56.01.jpeg",
-    "https://xhcxkvwrjcnioopultzq.supabase.co/storage/v1/object/public/public-resources/our-fleet/WhatsApp%20Image%202026-01-21%20at%2015.56.02.jpeg",
-    "https://xhcxkvwrjcnioopultzq.supabase.co/storage/v1/object/public/public-resources/our-fleet/WhatsApp%20Image%202026-01-21%20at%2015.56.03.jpeg",
-    "https://xhcxkvwrjcnioopultzq.supabase.co/storage/v1/object/public/public-resources/our-fleet/WhatsApp%20Image%202026-01-21%20at%2015.56.04.jpeg",
-    "https://xhcxkvwrjcnioopultzq.supabase.co/storage/v1/object/public/public-resources/our-fleet/WhatsApp%20Image%202026-01-21%20at%2015.56.03%20(1).jpeg",
-    "https://xhcxkvwrjcnioopultzq.supabase.co/storage/v1/object/public/public-resources/our-fleet/WhatsApp%20Image%202026-01-21%20at%2015.56.03%20(2).jpeg",
-];
-
-const MARQUEE_ITEMS = [...FLEET_IMAGES, ...FLEET_IMAGES];
+const MARQUEE_ITEMS = [...ASSETS.fleet, ...ASSETS.fleet];
 
 export const OurFleet = () => {
     return (
