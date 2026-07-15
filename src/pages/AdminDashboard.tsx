@@ -6,12 +6,13 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { authService } from "@/services/auth.service";
-import { adminService, GetUsersParams } from "@/services/admin.service";
+import { adminService, GetUsersParams, DashboardStats } from "@/services/admin.service";
 import { toast } from "sonner";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { ProfileDetailsModal } from "@/components/ProfileDetailsModal";
 import { ParticlesBackground } from "@/components/ParticlesBackground";
 import { Footer } from "@/components/LandingAlternate/Footer";
+import { ASSETS } from "@/lib/assets";
 
 const GOLD = "#D4AF37";
 
@@ -114,7 +115,7 @@ const AdminDashboard = () => {
   });
 
   const usersList = usersData?.pages.flatMap((p) => p.data) ?? [];
-  const statsData = (stats as any)?.stats || stats;
+  const statsData = (stats as { stats?: DashboardStats } | undefined)?.stats || stats;
   const totalUsers    = statsData?.total_users    ?? 0;
   const regularDrivers = statsData?.total_comfort ?? 0;
   const luxuryDrivers  = statsData?.total_luxury  ?? 0;
@@ -155,7 +156,7 @@ const AdminDashboard = () => {
             </button>
 
             <img
-              src="https://xhcxkvwrjcnioopultzq.supabase.co/storage/v1/object/public/public-resources/logos/G4_GOLD_brand.webp"
+              src={ASSETS.logoGold}
               alt="G4 Fleet"
               className="h-7 md:h-8 w-auto object-contain"
             />

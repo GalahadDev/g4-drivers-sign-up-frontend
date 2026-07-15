@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { User, Settings, LogOut, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ASSETS } from '@/lib/assets';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -31,7 +32,7 @@ export const LegacyHeader = ({ session, userRole, handleSignOut, loading }: Lega
                         onClick={() => navigate('/')}
                     >
                         <img
-                            src="https://xhcxkvwrjcnioopultzq.supabase.co/storage/v1/object/public/public-resources/logos/G4_GOLD_brand.webp"
+                            src={ASSETS.logoGold}
                             alt="G4 Fleet"
                             className="h-7 md:h-9 w-auto object-contain"
                         />

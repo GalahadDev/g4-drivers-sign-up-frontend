@@ -6,12 +6,13 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
+import { ASSETS } from "@/lib/assets";
+import { resolvePostLoginRoute } from "@/lib/postLoginRoute";
+import { logger } from "@/lib/logger";
+import type { Session } from "@supabase/supabase-js";
 
-const BG_IMAGE =
-    "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=2070&auto=format&fit=crop";
-
-const G4_LOGO =
-    "https://xhcxkvwrjcnioopultzq.supabase.co/storage/v1/object/public/public-resources/logos/G4_GOLD_brand.webp";
+const BG_IMAGE = ASSETS.heroDriverPov;
+const G4_LOGO = ASSETS.logoGold;
 
 const GoogleIcon = () => (
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
@@ -43,7 +44,7 @@ const Login = () => {
     }, [driverType]);
 
     useEffect(() => {
-        const checkUserAndRedirect = async (session: any) => {
+        const checkUserAndRedirect = async (session: Session | { user?: { email?: string } } | null) => {
             if (session?.user?.email) {
                 setIsLoading(true);
                 try {
@@ -52,33 +53,19 @@ const Login = () => {
                     const isAdminLoginAttempt = localStorage.getItem("isAdminLoginAttempt") === "true";
                     localStorage.removeItem("isAdminLoginAttempt");
 
-                    if (isAdminLoginAttempt) {
-                        if (role === "admin") {
-                            toast.success("Welcome Administrator");
-                            navigate("/admin");
-                        } else {
-                            toast.error("Only an admin can enter the dashboard");
-                            navigate("/profile");
-                        }
+                    const decision = resolvePostLoginRoute({ role, exists, isAdminLoginAttempt, pendingType: driverType });
+
+                    if (decision.kind === "selectType") {
+                        if (decision.toast) toast[decision.toast.type](decision.toast.message);
+                        setViewMode("selection");
                         return;
                     }
 
-                    if (role === "admin") { navigate("/admin"); return; }
-
-                    if (exists) {
-                        navigate("/profile");
-                    } else {
-                        if (driverType) {
-                            const targetRoute = driverType === "luxury" ? "/register/luxury" : "/register/regular";
-                            localStorage.removeItem("pendingDriverType");
-                            navigate(targetRoute);
-                        } else {
-                            toast.info("Account verified. Please select a driver type to continue.");
-                            setViewMode("selection");
-                        }
-                    }
+                    if (decision.path.startsWith("/register")) localStorage.removeItem("pendingDriverType");
+                    if (decision.toast) toast[decision.toast.type](decision.toast.message);
+                    navigate(decision.path);
                 } catch (err) {
-                    console.error(err);
+                    logger.error(err);
                     toast.error("Error verifying account status.");
                 } finally {
                     setIsLoading(false);
@@ -106,7 +93,7 @@ const Login = () => {
                             });
                         }
                     } catch (e) {
-                        console.error("Hash parsing error:", e);
+                        logger.error("Hash parsing error:", e);
                     }
                 }
             }
@@ -203,7 +190,7 @@ const Login = () => {
                                             <Crown className="w-4 h-4 text-[#D4AF37]" />
                                         </div>
                                         <img
-                                            src="https://bglvvffnlgawlcfxctbl.supabase.co/storage/v1/object/public/public-resources/cars/escalade-2026-vehicle.png"
+                                            src={ASSETS.carEscalade}
                                             alt="Luxury Escalade"
                                             className="w-full h-20 object-contain drop-shadow-lg group-hover:scale-105 transition-transform duration-500"
                                         />
@@ -223,7 +210,7 @@ const Login = () => {
                                             <Car className="w-4 h-4 text-gray-300" />
                                         </div>
                                         <img
-                                            src="https://xhcxkvwrjcnioopultzq.supabase.co/storage/v1/object/public/public-resources/cars/corolla.png"
+                                            src={ASSETS.carCorolla}
                                             alt="Standard Sedan"
                                             className="w-full h-20 object-contain grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-500"
                                         />

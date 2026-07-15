@@ -4,16 +4,7 @@ interface ParticlesBackgroundProps {
     type: "regular" | "luxury";
 }
 
-interface Particle {
-    x: number;
-    y: number;
-    size: number;
-    speedX: number;
-    speedY: number;
-    opacity: number;
-}
-
-interface LuxuryOrb {
+interface Orb {
     x: number;
     y: number;
     radius: number;
@@ -24,7 +15,7 @@ interface LuxuryOrb {
     pulseSpeed: number;
 }
 
-interface LuxuryDust {
+interface Dust {
     x: number;
     y: number;
     size: number;
@@ -33,6 +24,81 @@ interface LuxuryDust {
     opacity: number;
     maxOpacity: number;
 }
+
+// Per-variant tuning. luxury = gold bokeh + ember dust; comfort = blue/cyan
+// ambient orbs + azure drift. Same animation, only these numbers/colors differ.
+interface VariantConfig {
+    orb: {
+        countMobile: number;
+        countDesktop: number;
+        radiusBase: number;
+        radiusRange: number;
+        mobileScale: number;
+        speed: number;
+        opacityBase: number;
+        opacityRange: number;
+        pulseSpeedBase: number;
+        pulseSpeedRange: number;
+        pulseAmp: number;
+        // RGB triplets for the radial gradient stops (alpha applied at draw time).
+        rgbInner: string;
+        rgbMid: string;
+        rgbOuter: string;
+        midStop: number;
+        midAlphaMul: number;
+    };
+    dust: {
+        countMobile: number;
+        countDesktop: number;
+        sizeBase: number;
+        sizeRange: number;
+        speedYBase: number;
+        speedYRange: number;
+        speedX: number;
+        opacityBase: number;
+        opacityRange: number;
+        maxOpacityBase: number;
+        maxOpacityRange: number;
+        rgb: string;
+    };
+}
+
+const CONFIGS: Record<"luxury" | "comfort", VariantConfig> = {
+    luxury: {
+        orb: {
+            countMobile: 4, countDesktop: 7,
+            radiusBase: 140, radiusRange: 220, mobileScale: 0.6,
+            speed: 0.12, opacityBase: 0.025, opacityRange: 0.055,
+            pulseSpeedBase: 0.001, pulseSpeedRange: 0.003, pulseAmp: 0.28,
+            rgbInner: "201, 168, 76", rgbMid: "201, 168, 76", rgbOuter: "201, 168, 76", midStop: 0.45, midAlphaMul: 0.38,
+        },
+        dust: {
+            countMobile: 22, countDesktop: 45,
+            sizeBase: 0.4, sizeRange: 1.2,
+            speedYBase: 0.08, speedYRange: 0.35, speedX: 0.12,
+            opacityBase: 0.1, opacityRange: 0.45,
+            maxOpacityBase: 0.15, maxOpacityRange: 0.45,
+            rgb: "201, 168, 76",
+        },
+    },
+    comfort: {
+        orb: {
+            countMobile: 3, countDesktop: 5,
+            radiusBase: 160, radiusRange: 260, mobileScale: 0.65,
+            speed: 0.14, opacityBase: 0.02, opacityRange: 0.055,
+            pulseSpeedBase: 0.001, pulseSpeedRange: 0.0028, pulseAmp: 0.22,
+            rgbInner: "59, 130, 246", rgbMid: "56, 189, 248", rgbOuter: "14, 165, 233", midStop: 0.42, midAlphaMul: 0.32,
+        },
+        dust: {
+            countMobile: 20, countDesktop: 38,
+            sizeBase: 0.3, sizeRange: 1.0,
+            speedYBase: 0.06, speedYRange: 0.28, speedX: 0.1,
+            opacityBase: 0.08, opacityRange: 0.38,
+            maxOpacityBase: 0.1, maxOpacityRange: 0.38,
+            rgb: "125, 211, 252",
+        },
+    },
+};
 
 export const ParticlesBackground = ({ type }: ParticlesBackgroundProps) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -52,180 +118,91 @@ export const ParticlesBackground = ({ type }: ParticlesBackgroundProps) => {
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
 
+        const cfg = CONFIGS[type === "luxury" ? "luxury" : "comfort"];
+        const isMobile = window.innerWidth < 768;
+
+        const orbCount = isMobile ? cfg.orb.countMobile : cfg.orb.countDesktop;
+        const orbs: Orb[] = Array.from({ length: orbCount }, () => ({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            radius: (Math.random() * cfg.orb.radiusRange + cfg.orb.radiusBase) * (isMobile ? cfg.orb.mobileScale : 1),
+            speedX: (Math.random() - 0.5) * cfg.orb.speed,
+            speedY: (Math.random() - 0.5) * cfg.orb.speed,
+            opacity: Math.random() * cfg.orb.opacityRange + cfg.orb.opacityBase,
+            pulsePhase: Math.random() * Math.PI * 2,
+            pulseSpeed: Math.random() * cfg.orb.pulseSpeedRange + cfg.orb.pulseSpeedBase,
+        }));
+
+        const dustCount = isMobile ? cfg.dust.countMobile : cfg.dust.countDesktop;
+        const dust: Dust[] = Array.from({ length: dustCount }, () => ({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() * cfg.dust.sizeRange + cfg.dust.sizeBase,
+            speedY: -(Math.random() * cfg.dust.speedYRange + cfg.dust.speedYBase),
+            speedX: (Math.random() - 0.5) * cfg.dust.speedX,
+            opacity: Math.random() * cfg.dust.opacityRange + cfg.dust.opacityBase,
+            maxOpacity: Math.random() * cfg.dust.maxOpacityRange + cfg.dust.maxOpacityBase,
+        }));
+
         let animationId: number;
 
-        if (type === "luxury") {
-            const isMobile = window.innerWidth < 768;
+        const animate = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Large ambient bokeh orbs — drift very slowly
-            const orbCount = isMobile ? 4 : 7;
-            const orbs: LuxuryOrb[] = Array.from({ length: orbCount }, () => ({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                radius: (Math.random() * 220 + 140) * (isMobile ? 0.6 : 1),
-                speedX: (Math.random() - 0.5) * 0.12,
-                speedY: (Math.random() - 0.5) * 0.12,
-                opacity: Math.random() * 0.055 + 0.025,
-                pulsePhase: Math.random() * Math.PI * 2,
-                pulseSpeed: Math.random() * 0.003 + 0.001,
-            }));
+            orbs.forEach(orb => {
+                orb.x += orb.speedX;
+                orb.y += orb.speedY;
+                orb.pulsePhase += orb.pulseSpeed;
 
-            // Fine gold dust drifting upward like embers
-            const dustCount = isMobile ? 22 : 45;
-            const dust: LuxuryDust[] = Array.from({ length: dustCount }, () => ({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                size: Math.random() * 1.2 + 0.4,
-                speedY: -(Math.random() * 0.35 + 0.08),
-                speedX: (Math.random() - 0.5) * 0.12,
-                opacity: Math.random() * 0.45 + 0.1,
-                maxOpacity: Math.random() * 0.45 + 0.15,
-            }));
+                if (orb.x < -orb.radius) orb.x = canvas.width + orb.radius;
+                if (orb.x > canvas.width + orb.radius) orb.x = -orb.radius;
+                if (orb.y < -orb.radius) orb.y = canvas.height + orb.radius;
+                if (orb.y > canvas.height + orb.radius) orb.y = -orb.radius;
 
-            const animate = () => {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const pulsed = orb.opacity * (1 + cfg.orb.pulseAmp * Math.sin(orb.pulsePhase));
 
-                // Render orbs
-                orbs.forEach(orb => {
-                    orb.x += orb.speedX;
-                    orb.y += orb.speedY;
-                    orb.pulsePhase += orb.pulseSpeed;
+                const grad = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, orb.radius);
+                grad.addColorStop(0, `rgba(${cfg.orb.rgbInner}, ${pulsed})`);
+                grad.addColorStop(cfg.orb.midStop, `rgba(${cfg.orb.rgbMid}, ${pulsed * cfg.orb.midAlphaMul})`);
+                grad.addColorStop(1, `rgba(${cfg.orb.rgbOuter}, 0)`);
 
-                    if (orb.x < -orb.radius) orb.x = canvas.width + orb.radius;
-                    if (orb.x > canvas.width + orb.radius) orb.x = -orb.radius;
-                    if (orb.y < -orb.radius) orb.y = canvas.height + orb.radius;
-                    if (orb.y > canvas.height + orb.radius) orb.y = -orb.radius;
+                ctx.beginPath();
+                ctx.fillStyle = grad;
+                ctx.arc(orb.x, orb.y, orb.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
 
-                    const pulsed = orb.opacity * (1 + 0.28 * Math.sin(orb.pulsePhase));
+            dust.forEach(d => {
+                d.y += d.speedY;
+                d.x += d.speedX;
 
-                    const grad = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, orb.radius);
-                    grad.addColorStop(0, `rgba(201, 168, 76, ${pulsed})`);
-                    grad.addColorStop(0.45, `rgba(201, 168, 76, ${pulsed * 0.38})`);
-                    grad.addColorStop(1, `rgba(201, 168, 76, 0)`);
+                const yRatio = d.y / canvas.height;
+                if (yRatio > 0.85) {
+                    d.opacity = d.maxOpacity * ((1 - yRatio) / 0.15);
+                } else if (yRatio < 0.08) {
+                    d.opacity = d.maxOpacity * (yRatio / 0.08);
+                } else {
+                    d.opacity = d.maxOpacity;
+                }
 
-                    ctx.beginPath();
-                    ctx.fillStyle = grad;
-                    ctx.arc(orb.x, orb.y, orb.radius, 0, Math.PI * 2);
-                    ctx.fill();
-                });
+                if (d.y < -6) {
+                    d.y = canvas.height + 6;
+                    d.x = Math.random() * canvas.width;
+                    d.maxOpacity = Math.random() * cfg.dust.maxOpacityRange + cfg.dust.maxOpacityBase;
+                }
+                if (d.x < 0) d.x = canvas.width;
+                if (d.x > canvas.width) d.x = 0;
 
-                // Render dust
-                dust.forEach(d => {
-                    d.y += d.speedY;
-                    d.x += d.speedX;
+                ctx.beginPath();
+                ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${cfg.dust.rgb}, ${d.opacity})`;
+                ctx.fill();
+            });
 
-                    const yRatio = d.y / canvas.height;
-                    if (yRatio > 0.85) {
-                        d.opacity = d.maxOpacity * ((1 - yRatio) / 0.15);
-                    } else if (yRatio < 0.08) {
-                        d.opacity = d.maxOpacity * (yRatio / 0.08);
-                    } else {
-                        d.opacity = d.maxOpacity;
-                    }
+            animationId = requestAnimationFrame(animate);
+        };
 
-                    if (d.y < -6) {
-                        d.y = canvas.height + 6;
-                        d.x = Math.random() * canvas.width;
-                        d.maxOpacity = Math.random() * 0.45 + 0.15;
-                    }
-                    if (d.x < 0) d.x = canvas.width;
-                    if (d.x > canvas.width) d.x = 0;
-
-                    ctx.beginPath();
-                    ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(201, 168, 76, ${d.opacity})`;
-                    ctx.fill();
-                });
-
-                animationId = requestAnimationFrame(animate);
-            };
-
-            animate();
-        } else {
-            // COMFORT: deep blue/cyan ambient orbs + fine azure drift particles
-            const isMobile = window.innerWidth < 768;
-
-            const orbCount = isMobile ? 3 : 5;
-            const orbs: LuxuryOrb[] = Array.from({ length: orbCount }, () => ({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                radius: (Math.random() * 260 + 160) * (isMobile ? 0.65 : 1),
-                speedX: (Math.random() - 0.5) * 0.14,
-                speedY: (Math.random() - 0.5) * 0.14,
-                opacity: Math.random() * 0.055 + 0.02,
-                pulsePhase: Math.random() * Math.PI * 2,
-                pulseSpeed: Math.random() * 0.0028 + 0.001,
-            }));
-
-            const dustCount = isMobile ? 20 : 38;
-            const dust: LuxuryDust[] = Array.from({ length: dustCount }, () => ({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                size: Math.random() * 1.0 + 0.3,
-                speedY: -(Math.random() * 0.28 + 0.06),
-                speedX: (Math.random() - 0.5) * 0.1,
-                opacity: Math.random() * 0.38 + 0.08,
-                maxOpacity: Math.random() * 0.38 + 0.1,
-            }));
-
-            const animate = () => {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                orbs.forEach(orb => {
-                    orb.x += orb.speedX;
-                    orb.y += orb.speedY;
-                    orb.pulsePhase += orb.pulseSpeed;
-
-                    if (orb.x < -orb.radius) orb.x = canvas.width + orb.radius;
-                    if (orb.x > canvas.width + orb.radius) orb.x = -orb.radius;
-                    if (orb.y < -orb.radius) orb.y = canvas.height + orb.radius;
-                    if (orb.y > canvas.height + orb.radius) orb.y = -orb.radius;
-
-                    const pulsed = orb.opacity * (1 + 0.22 * Math.sin(orb.pulsePhase));
-
-                    const grad = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, orb.radius);
-                    grad.addColorStop(0, `rgba(59, 130, 246, ${pulsed})`);
-                    grad.addColorStop(0.42, `rgba(56, 189, 248, ${pulsed * 0.32})`);
-                    grad.addColorStop(1, `rgba(14, 165, 233, 0)`);
-
-                    ctx.beginPath();
-                    ctx.fillStyle = grad;
-                    ctx.arc(orb.x, orb.y, orb.radius, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-
-                dust.forEach(d => {
-                    d.y += d.speedY;
-                    d.x += d.speedX;
-
-                    const yRatio = d.y / canvas.height;
-                    if (yRatio > 0.85) {
-                        d.opacity = d.maxOpacity * ((1 - yRatio) / 0.15);
-                    } else if (yRatio < 0.08) {
-                        d.opacity = d.maxOpacity * (yRatio / 0.08);
-                    } else {
-                        d.opacity = d.maxOpacity;
-                    }
-
-                    if (d.y < -6) {
-                        d.y = canvas.height + 6;
-                        d.x = Math.random() * canvas.width;
-                        d.maxOpacity = Math.random() * 0.38 + 0.1;
-                    }
-                    if (d.x < 0) d.x = canvas.width;
-                    if (d.x > canvas.width) d.x = 0;
-
-                    ctx.beginPath();
-                    ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(125, 211, 252, ${d.opacity})`;
-                    ctx.fill();
-                });
-
-                animationId = requestAnimationFrame(animate);
-            };
-
-            animate();
-        }
+        animate();
 
         return () => {
             window.removeEventListener('resize', resizeCanvas);
